@@ -1,24 +1,27 @@
 # Why there is no front end
 
-Centrim Life is a database with a subscription. The tables underneath it are ordinary: a few entities, a few relationships, a handful of workflows you repeat every week. What you pay for is the layer on top that lets people who do not write SQL get at those tables. Screens, filters, dashboards, forms.
+Centrim Life is a set of screens over resident, unit and maintenance records. The records underneath are ordinary: villages, units, residents, contracts, fees, requests, meetings. What you pay for is the layer on top that lets staff get at them without writing a query. Screens, filters, dashboards, forms.
 
-That layer used to be the whole product, because talking to a database was hard. It is not hard any more. Open this folder in Claude Code, describe what you want, and it writes the query, runs it, and explains the answer. Ask a question the dashboard never had a chart for and you still get an answer.
+That layer used to be the whole product, because talking to a database was hard. It is not hard any more. Open this folder in Claude Code, describe what you want, and it writes the query, runs it, and explains the answer. Ask a question the dashboard never had a chart for (what an empty villa has cost in fees since the keys came back, which enquiry sources turn into residents) and you still get an answer.
 
 ## What you gain
 
-- **Better answers.** A dashboard shows what the vendor decided to chart. Here you ask your own question, in your own words, and get it answered against your own data.
-- **No seats.** Everyone who needs to look can look. The bill does not grow with headcount.
-- **Your data in your Postgres.** Plain tables. Back them up, query them from anything, leave any time. There is no export step because there is nothing to leave.
-- **A process that matches you.** When your way of working changes, you add a command. You do not wait for a feature request to clear.
+- **Better answers.** A dashboard shows what the vendor decided to chart. Here you ask your own question, in your own words, against your own records.
+- **The money side in the same place.** Exit entitlements, deferred management fees and the rules on fees after leaving sit beside the resident records, not in a second system.
+- **No seats.** Every village manager, accounts and sales person can look. The bill does not grow with headcount or villages.
+- **Your data in your Postgres.** Plain tables. Back them up, query them from anything, leave any time.
 
 ## What you give up
 
-- **A visual board.** Stages are a table you ask about, not cards you drag.
-- **A phone app.** It runs where Claude Code runs.
-- **A vendor help desk.** This is open source. Enterprise DNA supports the installed version for businesses that want someone to call.
+- **A resident app.** Centrim Life gives residents an app for messages, activities and dining orders. This has none; residents do not log in.
+- **Kiosks and tablets.** Visitor sign-in at the front door and dining orders on a tablet need a screen.
+- **A visual board.** Maintenance and enquiries are lists you ask about, not cards you drag.
+- **A vendor help desk.** This is open source. Enterprise DNA supports the installed version for operators who want someone to call.
+
+Enterprise DNA builds the screens an operator needs on top of the same database when they matter: a resident page, a visitor sign-in, a maintenance form for staff.
 
 ## Who this fits
 
-Small teams who already use Claude Code, or who would rather learn to ask than learn another interface. If your team needs a screen to look at all day, keep Centrim Life. If you need the answers more than the screens, this is cheaper, faster and yours.
+Operators whose office staff spend their week on exits, resales, fees, maintenance and enquiries, and who would rather ask than click. If your residents live in the app, keep it for them and run the office from here.
 
 Installed and run for you: https://enterprisedna.co/omni/instead-of/centrim-life

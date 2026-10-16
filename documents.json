@@ -1,11 +1,39 @@
 [
   {
-    "name": "example",
-    "title": "TODO(author): the first document this industry must produce",
-    "for_each": "select gen_random_uuid() as id, 'Example' as name",
+    "name": "exit-statement",
+    "title": "Exit entitlement statement",
+    "for_each": "select e.contract_id as id,e.contract from v_exits e",
+    "file": "contract",
+    "sections": [
+      { "title": "Former resident", "sql": "select s.business_name as operator,e.contract,e.unit,v.name as village,e.residents,e.settled_on as entry,e.ended_on as right_to_reside_ended,e.vacated_on as vacant_possession,e.years from v_exits e join villages v on v.code=e.village cross join settings s where e.contract_id=$1" },
+      { "title": "How the exit entitlement was worked out", "note": "Every line comes from the contract terms and the records on the date this was printed. Check it against the contract before it is given.", "sql": "select 'Ingoing contribution' as item,round(ingoing_cents/100.0,2) as amount,currency from v_exits where contract_id=$1 union all select 'Less deferred management fee ('||dmf_pct||'%)',-round(dmf_cents/100.0,2),currency from v_exits where contract_id=$1 union all select 'Plus share of capital gain',round(gain_share_cents/100.0,2),currency from v_exits where contract_id=$1 union all select 'Less share of refurbishment',-round(refurb_share_cents/100.0,2),currency from v_exits where contract_id=$1 union all select 'Less unpaid fees',-round(unpaid_charges_cents/100.0,2),currency from v_exits where contract_id=$1 union all select 'Exit entitlement',round(exit_cents/100.0,2),currency from v_exits where contract_id=$1" },
+      { "title": "Contract terms", "sql": "select c.kind,c.dmf_pct_per_year as dmf_per_year,c.dmf_cap_pct as dmf_cap,c.dmf_base as dmf_calculated_on,c.resident_share_pct as resident_share,c.refurb_share_pct as refurbishment_share from contracts c where c.id=$1" },
+      { "title": "Fees after leaving", "note": "The share of each period the former resident is billed, under the rules in docs/compliance.md. No interest is charged on these amounts.", "sql": "select ch.period_start,ch.period_end,round(ch.full_cents/100.0,2) as full_charge,round(ch.billed_cents/100.0,2) as your_share,round(100.0*ch.billed_cents/nullif(ch.full_cents,0))::int as share_pct,ch.paid_on from charges ch join contracts c on c.id=ch.contract_id where ch.contract_id=$1 and ch.period_start>=c.vacated_on order by ch.period_start" },
+      { "title": "Resale", "sql": "select r.agreed_value_on,round(r.agreed_value_cents/100.0) as agreed_value,r.valuation_on,round(r.valuation_cents/100.0) as valuation,round(r.refurb_cost_cents/100.0) as refurbishment_cost,r.first_advertised_on,round(r.sold_cents/100.0) as resold_for,r.settled_on as resale_settled from resales r where r.prior_contract_id=$1" },
+      { "title": "Payment", "sql": "select e.pay_by,e.nsw_order_from as nsw_order_can_be_sought_from,e.exit_paid_on,round(e.exit_paid_cents/100.0,2) as paid from v_exits e where e.contract_id=$1" }
+    ]
+  },
+  {
+    "name": "fee-statement",
+    "title": "Statement of village fees",
+    "for_each": "select c.id,c.number from contracts c where c.vacated_on is null",
+    "file": "number",
+    "sections": [
+      { "title": "Resident", "sql": "select s.business_name as operator,c.contract,c.unit,c.village_name as village,c.residents,round(c.weekly_fee_cents/100.0,2) as weekly_fee from v_contracts c cross join settings s where c.contract_id=$1" },
+      { "title": "The last six months", "sql": "select ch.period_start,ch.period_end,round(ch.billed_cents/100.0,2) as amount,ch.due_on,coalesce(ch.paid_on::text,case when ch.due_on<current_date then 'overdue' else 'due' end) as paid from charges ch where ch.contract_id=$1 and ch.period_start>=current_date-190 order by ch.period_start" },
+      { "title": "Balance", "sql": "select round(coalesce(sum(billed_cents) filter (where paid_on is null),0)/100.0,2) as unpaid,round(coalesce(sum(billed_cents) filter (where paid_on is null and due_on<current_date),0)/100.0,2) as overdue from charges where contract_id=$1" }
+    ]
+  },
+  {
+    "name": "agm-pack",
+    "title": "Annual general meeting pack",
+    "for_each": "select v.id,v.name from villages v",
     "file": "name",
     "sections": [
-      { "title": "Details", "sql": "select 'replace me' as item, $1::text as record_id" }
+      { "title": "Village", "sql": "select v.name,v.jurisdiction,v.manager,v.statutory_supervisor,a.year_end,a.agm_by,a.last_agm from villages v join v_agm a on a.village_id=v.id where v.id=$1" },
+      { "title": "Occupancy", "sql": "select count(u.id)::int as units,count(u.id) filter (where exists (select 1 from contracts c where c.unit_id=u.id and c.vacated_on is null))::int as occupied,(select count(*) from contracts c join units x on x.id=c.unit_id where x.village_id=$1 and c.settled_on>=current_date-365)::int as new_residents_this_year,(select count(*) from contracts c join units x on x.id=c.unit_id where x.village_id=$1 and c.ended_on>=current_date-365)::int as departures_this_year from units u where u.village_id=$1" },
+      { "title": "Maintenance report", "note": "Every request in the last 12 months, by category.", "sql": "select category,count(*)::int as requests,count(*) filter (where done_on is not null)::int as done,round(avg(done_on-reported_on) filter (where done_on is not null),1) as avg_days,round(sum(cost_cents)/100.0) as cost from maintenance where village_id=$1 and reported_on>=current_date-365 group by category order by cost desc" },
+      { "title": "Fees billed and collected", "sql": "select to_char(date_trunc('month',ch.period_start),'YYYY-MM') as month,round(sum(ch.billed_cents)/100.0) as billed,round(sum(ch.billed_cents) filter (where ch.paid_on is not null)/100.0) as collected from charges ch join contracts c on c.id=ch.contract_id join units u on u.id=c.unit_id where u.village_id=$1 group by 1 order by 1" }
     ]
   }
 ]

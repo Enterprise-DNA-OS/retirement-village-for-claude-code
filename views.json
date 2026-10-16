@@ -2,13 +2,37 @@
   {
     "name": "week",
     "title": "This week",
-    "subtitle": "Retirement Village for Claude Code: what needs attention, rendered by npm run view",
+    "subtitle": "Exit money, rule dates, maintenance, fees, empty units and enquiries that need someone",
     "sections": [
-      {
-        "title": "Needs attention",
-        "note": "TODO(author): point this at the industry's attention view (overdue, stuck, quiet).",
-        "sql": "select 'replace me' as item, 'TODO(author)' as why"
-      }
+      { "title": "Needs someone", "note": "Exit money and rule dates first. Sources for each rule: docs/compliance.md.", "sql": "select item,village,record,who,due_date,detail from v_attention order by case when item='EXIT DUE' or item like 'RULE%' then 1 when item='MAINTENANCE OVERDUE' then 2 when item='FEES OVERDUE' then 3 else 4 end,due_date" },
+      { "title": "Occupancy", "sql": "select v.code as village,v.name,count(u.id)::int as units,count(u.id) filter (where exists (select 1 from contracts c where c.unit_id=u.id and c.vacated_on is null))::int as occupied from villages v join units u on u.village_id=v.id group by v.id order by v.code" }
+    ]
+  },
+  {
+    "name": "vacancies",
+    "title": "Empty units",
+    "subtitle": "Every unit between residents, how long, and what it is costing",
+    "sections": [
+      { "title": "Between residents", "sql": "select village,unit,kind,stage,empty_since,days_empty,refurb_started_on,refurb_done_on,first_advertised_on,round(asking_cents/100.0) as asking,round(weekly_fee_cents*days_empty/700.0) as fees_forgone from v_vacancies order by days_empty desc" },
+      { "title": "Enquiries in play", "sql": "select v.code as village,q.name,q.stage,q.wants,q.last_contact_on,q.next_step,q.next_step_on from enquiries q left join villages v on v.id=q.village_id where q.stage not in ('moved in','lost') order by q.next_step_on nulls last" }
+    ]
+  },
+  {
+    "name": "money",
+    "title": "Money owed both ways",
+    "subtitle": "Exit entitlements the operator owes, and fees residents owe",
+    "sections": [
+      { "title": "Exit entitlements owed", "sql": "select village,unit,contract,residents,ended_on,state,round(exit_cents/100.0) as owed,currency,nsw_order_from,pay_by from v_exits where exit_paid_on is null order by coalesce(least(pay_by,nsw_order_from),pay_by,nsw_order_from) nulls last" },
+      { "title": "Fees overdue", "sql": "select village,unit,residents,count(*)::int as charges,round(sum(billed_cents)/100.0,2) as owed,max(days_overdue) as oldest_days from v_arrears group by village,unit,residents order by owed desc" }
+    ]
+  },
+  {
+    "name": "compliance",
+    "title": "Record checks",
+    "subtitle": "Each finding with the rule it comes from. A record check, not legal advice.",
+    "sections": [
+      { "title": "Findings", "sql": "select rule,village,record,residents,finding,due_date,source from v_compliance order by due_date" },
+      { "title": "AGM dates", "sql": "select village,jurisdiction,year_end,agm_by,agm_held_on,last_agm from v_agm order by village" }
     ]
   }
 ]
